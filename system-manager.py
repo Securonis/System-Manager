@@ -5,8 +5,8 @@ import subprocess
 import psutil
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                            QHBoxLayout, QLabel, QPushButton, QTextEdit,
-                           QMessageBox, QTabWidget, QFrame, QScrollArea,
-                           QGridLayout, QProgressBar)
+                           QMessageBox, QTabWidget, QFrame, QScrollArea, QDialog,
+                           QGridLayout, QProgressBar, QTextBrowser)
 from PyQt5.QtCore import Qt, QSize, QTimer, QPropertyAnimation, QEasingCurve
 from PyQt5.QtGui import QFont, QIcon, QPixmap, QPalette, QColor, QLinearGradient
 
@@ -60,8 +60,8 @@ class SystemMonitor(QWidget):
             }
         """
         
-        # CPU RAM DISK
-        for name in ["CPU", "RAM", "Disk"]:
+        # Only CPU and RAM, removed DISK
+        for name in ["CPU", "RAM"]:
             item_layout = QHBoxLayout()
             label = QLabel(f"{name}:")
             label.setStyleSheet("color: white; font-weight: bold;")
@@ -85,10 +85,7 @@ class SystemMonitor(QWidget):
         self.ram_bar.setValue(int(ram.percent))
         self.ram_bar.setFormat(f"RAM: {ram.percent}%")
         
-        # DISK usage 
-        disk = psutil.disk_usage('/')
-        self.disk_bar.setValue(int(disk.percent))
-        self.disk_bar.setFormat(f"Disk: {disk.percent}%")
+        # Disk usage indicator removed
 
 class SystemManager(QMainWindow):
     def __init__(self):
@@ -111,7 +108,7 @@ class SystemManager(QMainWindow):
         
         # Logo
         self.logo_label = QLabel()
-        logo_pixmap = QPixmap("/usr/share/icons/securonis/logo2.png")
+        logo_pixmap = QPixmap("/usr/share/icons/securonis/newlogo.png")
         if not logo_pixmap.isNull():
             self.logo_pixmap = logo_pixmap.scaled(150, 150, Qt.KeepAspectRatio, Qt.SmoothTransformation)
             self.logo_label.setPixmap(self.logo_pixmap)
@@ -122,9 +119,9 @@ class SystemManager(QMainWindow):
         self.system_monitor = SystemMonitor()
         left_layout.addWidget(self.system_monitor)
         
-        # 
-        grid_layout = QGridLayout()
-        grid_layout.setSpacing(5)
+      
+        button_layout = QVBoxLayout()
+        button_layout.setSpacing(5)
         
         # 
         button_style = """
@@ -151,34 +148,29 @@ class SystemManager(QMainWindow):
             }
         """
         
-        # Menu
+        # Menu - removed Disk Info, Packages, Memory, CPU Info, Drivers
         menu_buttons = [
-            ("Update System", self.update_system),
-            ("Firmware Update", self.update_firmware),
-            ("System Info", self.system_info),
-            ("Disk Info", self.disk_info),
-            ("Internet Test", self.internet_test),
-            ("Packages", self.list_packages),
-            ("Memory", self.memory_usage),
-            ("CPU Info", self.cpu_info),
-            ("Network", self.network_connections),
-            ("Clear Cache", self.clear_cache),
-            ("Drivers", self.check_drivers),
-            ("About", self.show_about),
-            ("Help", self.show_help),
+            ("Update System", lambda: self.safe_execute(self.update_system)),
+            ("Firmware Update", lambda: self.safe_execute(self.update_firmware)),
+            ("System Info", lambda: self.safe_execute(self.system_info)),
+            ("Internet Test", lambda: self.safe_execute(self.internet_test)),
+            ("Network", lambda: self.safe_execute(self.network_connections)),
+            ("Clear Cache", lambda: self.safe_execute(self.clear_cache)),
+            ("About", lambda: self.safe_execute(self.show_about)),
+            ("Help", lambda: self.safe_execute(self.show_help)),
             ("Exit", self.close)
         ]
         
-        self.buttons = {}  # hide butons
-        for i, (text, callback) in enumerate(menu_buttons):
-            btn = QPushButton(text)
-            btn.setStyleSheet(button_style)
-            btn.setCursor(Qt.PointingHandCursor)
-            btn.clicked.connect(callback)
-            grid_layout.addWidget(btn, i//2, i%2)
-            self.buttons[text] = btn
+        self.buttons = {}
         
-        left_layout.addLayout(grid_layout)
+     
+        for text, callback in menu_buttons:
+            button = ModernButton(text)
+            button.clicked.connect(callback)
+            button_layout.addWidget(button)
+            self.buttons[text] = button
+        
+        left_layout.addLayout(button_layout)
         left_layout.addStretch()
         main_layout.addWidget(left_panel)
         
@@ -241,21 +233,33 @@ class SystemManager(QMainWindow):
         
     def set_dark_theme(self):
         palette = QPalette()
-        palette.setColor(QPalette.Window, QColor(30, 30, 30))
+        palette.setColor(QPalette.Window, QColor(18, 18, 18))         
         palette.setColor(QPalette.WindowText, Qt.white)
-        palette.setColor(QPalette.Base, QColor(25, 25, 25))
-        palette.setColor(QPalette.AlternateBase, QColor(35, 35, 35))
-        palette.setColor(QPalette.ToolTipBase, Qt.white)
+        palette.setColor(QPalette.Base, QColor(12, 12, 12))           
+        palette.setColor(QPalette.AlternateBase, QColor(24, 24, 24))  
+        palette.setColor(QPalette.ToolTipBase, QColor(18, 18, 18))
         palette.setColor(QPalette.ToolTipText, Qt.white)
         palette.setColor(QPalette.Text, Qt.white)
-        palette.setColor(QPalette.Button, QColor(35, 35, 35))
+        palette.setColor(QPalette.Button, QColor(32, 32, 32))       
         palette.setColor(QPalette.ButtonText, Qt.white)
         palette.setColor(QPalette.BrightText, Qt.red)
-        palette.setColor(QPalette.Link, QColor(42, 130, 218))
-        palette.setColor(QPalette.Highlight, QColor(42, 130, 218))
-        palette.setColor(QPalette.HighlightedText, Qt.black)
+        palette.setColor(QPalette.Highlight, QColor(0, 120, 212))     
+        palette.setColor(QPalette.HighlightedText, Qt.white)
         self.setPalette(palette)
         
+    def safe_execute(self, function):
+        """Error handling wrapper for button functions"""
+        try:
+            function()
+        except Exception as e:
+            self.status_label.setText("Error occurred!")
+            self.output_text.clear()
+            self.output_text.append(f"Error: {str(e)}")
+            QMessageBox.critical(self, "Error", f"An error occurred: {str(e)}")
+            import traceback
+            self.output_text.append("\nDetailed error info:")
+            self.output_text.append(traceback.format_exc())
+            
     def run_command(self, command, button_text=None):
         try:
             # 
@@ -284,36 +288,60 @@ class SystemManager(QMainWindow):
     def update_system(self):
         self.status_label.setText("Updating system...")
         self.output_text.clear()
+        self.output_text.append("Starting system update process...")
         
         try:
-            # Update progress
+            # Update repositories
+            self.output_text.append("\n[1/2] Updating package repositories...")
             update_process = subprocess.Popen(['sudo', 'apt-get', 'update'], 
                                            stdout=subprocess.PIPE, 
                                            stderr=subprocess.PIPE,
                                            universal_newlines=True)
             
+            # Process output in batches to reduce UI updates
+            output_buffer = []
             while True:
                 output = update_process.stdout.readline()
                 if output == '' and update_process.poll() is not None:
                     break
                 if output:
-                    self.output_text.append(output.strip())
-                    QApplication.processEvents()
+                    output_buffer.append(output.strip())
+                    # Update UI less frequently to improve performance
+                    if len(output_buffer) >= 5:
+                        self.output_text.append("\n".join(output_buffer))
+                        output_buffer = []
+                        QApplication.processEvents()
             
-            # Upgrade progress
+            # Display any remaining output
+            if output_buffer:
+                self.output_text.append("\n".join(output_buffer))
+            
+            # Upgrade packages
+            self.output_text.append("\n[2/2] Upgrading packages...")
             upgrade_process = subprocess.Popen(['sudo', 'apt-get', 'upgrade', '-y'],
                                             stdout=subprocess.PIPE,
                                             stderr=subprocess.PIPE,
                                             universal_newlines=True)
             
+            # Process output in batches to reduce UI updates
+            output_buffer = []
             while True:
                 output = upgrade_process.stdout.readline()
                 if output == '' and upgrade_process.poll() is not None:
                     break
                 if output:
-                    self.output_text.append(output.strip())
-                    QApplication.processEvents()
+                    output_buffer.append(output.strip())
+                    # Update UI less frequently to improve performance
+                    if len(output_buffer) >= 5:
+                        self.output_text.append("\n".join(output_buffer))
+                        output_buffer = []
+                        QApplication.processEvents()
             
+            # Display any remaining output
+            if output_buffer:
+                self.output_text.append("\n".join(output_buffer))
+                
+            # Only show the success message at the end of the entire process
             self.status_label.setText("System update completed!")
             QMessageBox.information(self, "Success", "System has been successfully updated!")
             
@@ -325,33 +353,66 @@ class SystemManager(QMainWindow):
     def system_info(self):
         self.output_text.clear()
         try:
-            # Kernel version without -e
+            # Kernel version
             kernel = subprocess.check_output(['uname', '-r']).decode().strip()
-            self.output_text.append(f"Kernel Version: {kernel}")
+            self.output_text.append(f"Kernel: {kernel}")
             
-            # Other system info
-            os_info = subprocess.check_output(['lsb_release', '-a']).decode()
-            self.output_text.append("\nOperating System Information:")
-            self.output_text.append(os_info)
+            # Read from /etc/os-release instead of lsb_release
+            if os.path.exists('/etc/os-release'):
+                with open('/etc/os-release', 'r') as f:
+                    os_release = f.readlines()
+                
+                os_info = {}
+                for line in os_release:
+                    if '=' in line:
+                        key, value = line.strip().split('=', 1)
+                        # Remove quotes if present
+                        os_info[key] = value.strip('"')
+                
+                self.output_text.append("\nOperating System:")
+                if 'NAME' in os_info:
+                    self.output_text.append(f"Name: {os_info['NAME']}")
+                if 'VERSION' in os_info:
+                    self.output_text.append(f"Version: {os_info['VERSION']}")
+                if 'ID' in os_info:
+                    self.output_text.append(f"ID: {os_info['ID']}")
+                if 'PRETTY_NAME' in os_info:
+                    self.output_text.append(f"Description: {os_info['PRETTY_NAME']}")
+            else:
+                # Fallback to lsb_release if os-release doesn't exist
+                os_info = subprocess.check_output(['lsb_release', '-a']).decode()
+                self.output_text.append("\nOperating System Information:")
+                self.output_text.append(os_info)
+                
+            # Additional hardware info
+            self.output_text.append("\nCPU Information:")
+            cpu_info = subprocess.check_output("cat /proc/cpuinfo | grep 'model name' | head -1", shell=True).decode().strip()
+            self.output_text.append(cpu_info)
+            
+            # Memory information
+            mem_info = psutil.virtual_memory()
+            self.output_text.append(f"\nMemory Total: {self.format_bytes(mem_info.total)}")
+            self.output_text.append(f"Memory Available: {self.format_bytes(mem_info.available)}")
             
         except Exception as e:
             self.output_text.append(f"Error: {str(e)}")
         
-    def disk_info(self):
-        self.run_command("df -h", "Disk Info")
-        
+
     def internet_test(self):
         try:
-            # 
+            # Disable button while testing
             if "Internet Test" in self.buttons:
                 self.buttons["Internet Test"].setEnabled(False)
             
-            # 
+            # Show testing message
             self.output_text.setText("Testing internet connection...")
             QApplication.processEvents()
             
-            # 
-            result = subprocess.run("ping -c 1 google.com", shell=True, capture_output=True, text=True)
+            # Run ping command with appropriate parameters for platform
+            if sys.platform == 'win32':
+                result = subprocess.run("ping -n 1 google.com", shell=True, capture_output=True, text=True)
+            else:
+                result = subprocess.run("ping -c 1 google.com", shell=True, capture_output=True, text=True)
             
             if result.returncode == 0:
                 self.output_text.setText("Internet connection is working!")
@@ -359,9 +420,9 @@ class SystemManager(QMainWindow):
                 self.output_text.setText("No internet connection!")
             
         except Exception as e:
-            self.output_text.setText("Error checking internet connection!")
+            self.output_text.setText(f"Error checking internet connection: {str(e)}")
         finally:
-            # 
+            # Re-enable button
             if "Internet Test" in self.buttons:
                 self.buttons["Internet Test"].setEnabled(True)
         
@@ -381,40 +442,139 @@ class SystemManager(QMainWindow):
         self.run_command("sudo sync && sudo echo 3 > /proc/sys/vm/drop_caches && sudo apt clean && sudo apt autoremove -y", "Clear Cache")
         
     def check_drivers(self):
-        self.run_command("sudo lshw -C display", "Drivers")
-        
+        try:
+            self.run_command("sudo lshw -C display", "Drivers")
+        except Exception as e:
+            self.output_text.setText(f"Error checking drivers: {str(e)}")
     def show_about(self):
-        self.output_text.clear()
-        self.output_text.append("Securonis Linux System Manager")
-        self.output_text.append("Version: 2.2")
-        self.output_text.append("\nDeveloper: root0emir")
-        self.output_text.append("\nWebsite: https://securonis.github.io")
-        self.output_text.append("Github: https://github.com/securonis/system-manager")
-        
-    def show_help(self):
-        QMessageBox.information(self, "Help",
-                              "This application provides various system management tools:\n\n"
-                              "1. Update System: Update your system packages\n"
-                              "2. Firmware Update: Update system firmware\n"
-                              "3. System Information: View OS and kernel information\n"
-                              "4. Disk Information: View disk usage\n"
-                              "5. Internet Test: Test your internet connection\n"
-                              "6. Installed Packages: List all installed packages\n"
-                              "7. Memory Usage: View memory usage\n"
-                              "8. CPU Information: View CPU details\n"
-                              "9. Network Connections: View network interfaces\n"
-                              "10. Clear Cache: Clear system cache\n"
-                              "11. Check Drivers: View display drivers\n"
-                              "12. About: View application information\n"
-                              "13. Help: Show this help message\n"
-                              "14. Exit: Close the application")
+        try:
+            about_dialog = QDialog(self)
+            about_dialog.setWindowTitle("About")
+            about_dialog.setFixedSize(400, 280)
+            about_dialog.setStyleSheet("background-color: #121212; color: white;")
+            
+            about_dialog.setWindowFlags(about_dialog.windowFlags() & ~Qt.WindowContextHelpButtonHint)
+            
+            layout = QVBoxLayout()
+            
+            icon_label = QLabel()
+            icon = QPixmap("/usr/share/icons/securonis/newlogo.png")
+            if not icon.isNull():
+                icon_label.setPixmap(icon.scaled(80, 80, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+            icon_label.setAlignment(Qt.AlignCenter)
+            
+            title = QLabel("Securonis Linux System Manager")
+            title.setStyleSheet("font-weight: bold; font-size: 16px; color: white; margin-top: 10px;")
+            title.setAlignment(Qt.AlignCenter)
+            
+            info = QLabel("Version: 2.5\n\nDeveloper: root0emir\n\n" +
+                         "Website: https://securonis.github.io\n" +
+                         "Github: https://github.com/securonis/system-manager")
+            info.setStyleSheet("color: white; margin: 10px;")
+            info.setAlignment(Qt.AlignCenter)
+            
+            close_button = QPushButton("OK")
+            close_button.clicked.connect(about_dialog.accept)
+            close_button.setFixedWidth(100)
+            close_button.setStyleSheet(
+                "QPushButton {background-color: #1a1a1a; color: white; border: 1px solid #333; padding: 5px;}"
+                "QPushButton:hover {background-color: #292929;}"
+                "QPushButton:pressed {background-color: #0f0f0f;}"
+            )
+            
+            button_layout = QHBoxLayout()
+            button_layout.addStretch()
+            button_layout.addWidget(close_button)
+            button_layout.addStretch()
+            
+         
+            layout.addWidget(icon_label)
+            layout.addWidget(title)
+            layout.addWidget(info)
+            layout.addStretch()
+            layout.addLayout(button_layout)
+            
+            about_dialog.setLayout(layout)
+            about_dialog.exec_()
+            
+        except Exception as e:
+            self.status_label.setText(f"About dialog error: {str(e)}")
+            QMessageBox.critical(self, "Error", f"An error occurred: {str(e)}")
 
+    def show_help(self):
+        try:
+            help_dialog = QDialog(self)
+            help_dialog.setWindowTitle("Help")
+            help_dialog.setFixedSize(400, 300)
+            help_dialog.setStyleSheet("background-color: #121212; color: white;")
+            
+            help_dialog.setWindowFlags(help_dialog.windowFlags() & ~Qt.WindowContextHelpButtonHint)
+            
+            layout = QVBoxLayout()
+            
+            icon_label = QLabel()
+            icon = QPixmap("icons/info.png")
+            if not icon.isNull():
+                icon_label.setPixmap(icon.scaled(50, 50, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+                icon_label.setStyleSheet("font-size: 40px; color: white;")
+            icon_label.setAlignment(Qt.AlignCenter)
+            
+            title_label = QLabel("Securonis Linux System Manager:")
+            title_label.setStyleSheet("font-weight: bold; font-size: 16px; color: white;")
+            title_label.setAlignment(Qt.AlignCenter)
+            
+            description = QLabel("This application provides the following system management tools:")
+            description.setWordWrap(True)
+            description.setStyleSheet("color: white;")
+            
+            features = QLabel(
+                "1. Update System: Updates system packages\n"
+                "2. Firmware Update: Updates system firmware\n"
+                "3. System Info: Shows operating system and kernel information\n"
+                "4. Internet Test: Tests your internet connection\n"
+                "5. Network: Displays network interfaces\n"
+                "6. Clear Cache: Cleans system cache\n"
+                "7. About: Shows application information\n"
+                "8. Help: Displays this help message\n"
+                "9. Exit: Closes the application"
+            )
+            features.setWordWrap(True)
+            features.setStyleSheet("color: white;")
+            
+            close_button = QPushButton("OK")
+            close_button.clicked.connect(help_dialog.accept)
+            close_button.setFixedWidth(100)
+            close_button.setStyleSheet(
+                "QPushButton {background-color: #1a1a1a; color: white; border: 1px solid #333; padding: 5px;}"
+                "QPushButton:hover {background-color: #292929;}"
+                "QPushButton:pressed {background-color: #0f0f0f;}"
+            )
+            
+            layout.addWidget(icon_label)
+            layout.addWidget(title_label)
+            layout.addWidget(description)
+            layout.addWidget(features)
+            layout.addStretch()
+            
+            button_layout = QHBoxLayout()
+            button_layout.addStretch()
+            button_layout.addWidget(close_button)
+            button_layout.addStretch()
+            
+            layout.addLayout(button_layout)
+            
+            help_dialog.setLayout(layout)
+            help_dialog.exec_()
+            
+        except Exception as e:
+            self.status_label.setText(f"Help dialog error: {str(e)}")
+            QMessageBox.critical(self, "Error", f"An error occurred: {str(e)}")
+        
     def update_firmware(self):
         self.status_label.setText("Updating firmware...")
         self.output_text.clear()
         
         try:
-            # Run firmware update command
             update_process = subprocess.Popen(
                 'sudo apt update && sudo apt install -y fwupd && sudo fwupdmgr refresh --force && sudo fwupdmgr get-updates && sudo fwupdmgr update -y',
                 shell=True,
@@ -430,14 +590,11 @@ class SystemManager(QMainWindow):
                 if output:
                     self.output_text.append(output.strip())
                     QApplication.processEvents()
-            
-            self.status_label.setText("Firmware update completed!")
-            QMessageBox.information(self, "Success", "Firmware update process completed!")
-            
+                
+            self.status_label.setText("Firmware update completed")
         except Exception as e:
-            self.status_label.setText("Error occurred!")
-            self.output_text.append(f"Error: {str(e)}")
-            QMessageBox.critical(self, "Error", f"An error occurred while updating firmware: {str(e)}")
+            self.output_text.append(f"Error updating firmware: {str(e)}")
+            self.status_label.setText("Firmware update failed")
 
 def main():
     app = QApplication(sys.argv)
