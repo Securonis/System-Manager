@@ -108,7 +108,7 @@ class SystemManager(QMainWindow):
         
         # Logo
         self.logo_label = QLabel()
-        logo_pixmap = QPixmap("/usr/share/icons/securonis/newlogo.png")
+        logo_pixmap = QPixmap("/usr/share/icons/securonis/newlogopng.png")
         if not logo_pixmap.isNull():
             self.logo_pixmap = logo_pixmap.scaled(150, 150, Qt.KeepAspectRatio, Qt.SmoothTransformation)
             self.logo_label.setPixmap(self.logo_pixmap)
