@@ -458,7 +458,7 @@ class SystemManager(QMainWindow):
             layout = QVBoxLayout()
             
             icon_label = QLabel()
-            icon = QPixmap("/usr/share/icons/securonis/newlogo.png")
+            icon = QPixmap("/usr/share/icons/securonis/newlogopng.png")
             if not icon.isNull():
                 icon_label.setPixmap(icon.scaled(80, 80, Qt.KeepAspectRatio, Qt.SmoothTransformation))
             icon_label.setAlignment(Qt.AlignCenter)
