@@ -271,7 +271,8 @@ class SystemManager(QMainWindow):
     def update_system(self):
         """Update system packages"""
         self.status_label.setText("Updating system...")
-        command = "pkexec apt update && pkexec apt upgrade -y"
+        # Using apt-get instead of apt to avoid CLI interface warning
+        command = "apt-get update && apt-get upgrade -y"
         
         success = self.run_command(command, "Update System")
         
