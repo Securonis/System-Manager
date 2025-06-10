@@ -88,7 +88,7 @@ class SystemManager(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Securonis Linux System Manager")
-        self.setGeometry(100, 100, 755, 450)
+        self.setGeometry(100, 100, 755, 400)
         
         # Main widget
         central_widget = QWidget()
